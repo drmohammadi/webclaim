@@ -1,0 +1,15 @@
+{
+  "name": "webclaim-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "genlayer-js": "2.0.0-rc.2"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5"
+  }
+}
