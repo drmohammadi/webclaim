@@ -1,6 +1,6 @@
-import { createClient, isSuccessful } from "genlayer-js";
+import { createClient } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
-import { TransactionHashVariant } from "genlayer-js/types";
+import { TransactionHashVariant, TransactionStatus } from "genlayer-js/types";
 
 const addressEl = document.querySelector("#address");
 const claimEl = document.querySelector("#claim");
@@ -80,7 +80,7 @@ async function readSaved() {
   setError("");
   const address = contractAddress();
   if (!client) await connect();
-  setStatus("reading finalized state");
+  setStatus("reading saved state");
   const value = await client.readContract({
     address,
     functionName: "get_result",
@@ -97,31 +97,23 @@ async function verify() {
   const { claim, sourceUrl } = inputs();
   if (!client) await connect();
 
-  const write = {
+  setStatus("pending: waiting for wallet");
+  const txId = await client.writeContract({
     address,
     functionName: "verify",
     args: [claim, sourceUrl],
-  };
-  setStatus("pending: estimating fees");
-  const estimate = await client.estimateTransactionFeesForWrite(write);
-  setStatus("pending: waiting for wallet");
-  const txId = await client.writeContract({
-    ...write,
-    fees: {
-      distribution: estimate.distribution,
-      feeValue: estimate.feeValue,
-    },
+    value: 0n,
   });
   setStatus(`pending: ${txId}`);
-  const transaction = await client.waitForFinalization({
+  const receipt = await client.waitForTransactionReceipt({
     hash: txId,
+    status: TransactionStatus.FINALIZED,
     interval: 5000,
     retries: 120,
   });
-  if (!isSuccessful(transaction)) {
-    throw new Error(
-      `${transaction.statusName || "unknown"} / ${transaction.txExecutionResultName || "execution failed"}`,
-    );
+  const execution = receipt?.txExecutionResultName;
+  if (execution === "FINISHED_WITH_ERROR") {
+    throw new Error("Contract execution failed.");
   }
   setStatus("finalized");
   await readSaved();
